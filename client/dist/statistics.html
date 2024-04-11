@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Statistikkportal</title>
+    <style>
+      /* CSS-stildefinisjoner */
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+      }
+
+      label {
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      input,
+      select {
+        font-size: 16px;
+        padding: 8px;
+        margin-bottom: 10px;
+      }
+
+      button {
+        font-size: 16px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #results {
+        margin-top: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      .loading {
+        display: none;
+        margin-top: 60px;
+      }
+
+      .error {
+        color: red;
+        margin-top: 40px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Statistikkportal</h1>
+    <form id="statisticsForm">
+      <div>
+        <label for="statisticVariable">Statistikkvariabel:</label>
+        <select id="statisticVariable" name="statisticVariable" required>
+          <option value="Folkemengde">Befolkning per 1.1 (personer)</option>
+          <option value="ArealKm2">Areal (km2)</option>
+          <option value="LandArealKm2">Landareal (km2)</option>
+          <option value="FolkeLandArealKm2">
+            Innbyggere per km2 landareal
+          </option>
+        </select>
+      </div>
+      <div>
+        <label for="regionType">Regiontype:</label>
+        <select id="regionType" name="regionType" required>
+          <option value="kommune">Kommune</option>
+          <option value="fylke">Fylke</option>
+        </select>
+      </div>
+      <div>
+        <label for="regions">Regioner (kommaseparert):</label>
+        <input
+          type="text"
+          id="regions"
+          name="regions"
+          required
+          placeholder="F.eks., 3101, 0117"
+        />
+        <small id="regionCodeHint"
+          >Skriv inn kommune/fylkeskoder, separert med komma</small
+        >
+      </div>
+      <div>
+        <label for="year1">År 1:</label>
+        <input
+          type="number"
+          id="year1"
+          name="year1"
+          min="2007"
+          max="2024"
+          required
+        />
+        <label for="year2">År 2:</label>
+        <input
+          type="number"
+          id="year2"
+          name="year2"
+          min="2007"
+          max="2024"
+          required
+        />
+        <label for="year3">År 3:</label>
+        <input
+          type="number"
+          id="year3"
+          name="year3"
+          min="2007"
+          max="2024"
+          required
+        />
+      </div>
+      <button type="submit">Hent Data</button>
+      <div class="loading" id="loadingIndicator">Laster data...</div>
+      <div class="error" id="errorMessage"></div>
+    </form>
+
+    <h2>Resultater:</h2>
+    <div id="results">
+      <table id="statisticsTable">
+        <thead>
+          <tr>
+            <th>Statistikkvariabel</th>
+            <th>Median</th>
+            <th>Gjennomsnitt</th>
+            <th>Maks</th>
+            <th>Min</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script>
+      document
+        .getElementById("statisticsForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          // Viser indikator for lasting
+          const loadingIndicator = document.getElementById("loadingIndicator");
+          loadingIndicator.style.display = "block";
+
+          // Henter verdier fra skjemaet
+          const statisticVariable =
+            document.getElementById("statisticVariable").value;
+          const regionType = document.getElementById("regionType").value;
+          const regions = document.getElementById("regions").value.split(",");
+          const years = [
+            document.getElementById("year1").value,
+            document.getElementById("year2").value,
+            document.getElementById("year3").value,
+          ];
+
+          // Utfører POST-forespørsel til serveren
+          try {
+            const response = await fetch("/api/data", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                statisticVariable,
+                regionType,
+                regions,
+                years,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Network response was not ok.");
+            }
+
+            const statistics = await response.json();
+
+            // Oppdaterer tabellen med statistikkene
+            const tableBody = document.querySelector("#statisticsTable tbody");
+            tableBody.innerHTML = `
+              <tr>
+                <td>${statisticVariable}</td>
+                <td>${statistics.median}</td>
+                <td>${statistics.mean}</td>
+                <td>${statistics.max}</td>
+                <td>${statistics.min}</td>
+              </tr>
+            `;
+
+          } catch (error) {
+            console.error("Error fetching data:", error);
+            document.getElementById("errorMessage").textContent =
+              "Feil ved henting av data. Vennligst prøv igjen senere.";
+          }
+
+          // Skjuler indikator for lasting
+          loadingIndicator.style.display = "none";
+        });
+    </script>
+  </body>
+</html>
